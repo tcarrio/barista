@@ -140,7 +140,7 @@
     "extract-loader": "^5.0.1",
     "glob": "^7.1.6",
     "highcharts": "^7.2.1",
-    "husky": "^4.2.3",
+    "husky": "^4.2.5",
     "inquirer": "^7.1.0",
     "jest": "^24.8.0",
     "jest-environment-jsdom-sixteen": "^1.0.3",
