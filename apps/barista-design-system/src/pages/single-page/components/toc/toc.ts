@@ -20,16 +20,16 @@ import {
   OnInit,
   AfterViewInit,
   OnDestroy,
-  NgZone,
   Inject,
   Input,
   QueryList,
 } from '@angular/core';
-import { BaTocService } from '../../../../shared/services/toc.service';
 import { Subscription } from 'rxjs';
 import { Platform } from '@angular/cdk/platform';
 import { DOCUMENT } from '@angular/common';
 import { TableOfContents } from '@dynatrace/shared/barista-definitions';
+import { BaScrollSpyService2 } from 'apps/barista-design-system/src/shared/services/scroll-spy2.service';
+import { BaScrollSpyElement } from 'apps/barista-design-system/src/shared/scroll-spy/scroll-spy';
 
 @Component({
   selector: 'ba-toc',
@@ -48,38 +48,27 @@ export class BaToc implements OnInit, AfterViewInit, OnDestroy {
 
   /** @internal whether the TOC is expanded  */
   _expandToc: boolean;
+
   /** @internal the TOC entries that are currently active */
-  _activeItems: TableOfContents[] = [];
+  _activeItems: BaScrollSpyElement[] = [];
 
   /** Subscription on active TOC items */
   private _activeItemsSubscription = Subscription.EMPTY;
 
   constructor(
-    private _tocService: BaTocService,
-    private _zone: NgZone,
+    private _scrollSpyService: BaScrollSpyService2,
     private _platform: Platform,
     @Inject(DOCUMENT) private _document: any,
   ) {}
 
   ngOnInit(): void {
-    this._tocService.tocItems = this.tocitems;
-    this._activeItemsSubscription = this._tocService.activeItems.subscribe(
-      (activeItems) => {
-        this._zone.run(() => {
-          if (activeItems) {
-            this._activeItems = activeItems;
-          }
-        });
-      },
-    );
+    this._scrollSpyService.activeItems.subscribe((activeItems) => {
+      this._activeItems = activeItems;
+    });
+    debugger;
   }
 
-  ngAfterViewInit(): void {
-    Promise.resolve().then(() => {
-      const docElement = this._document.getElementById('main') || undefined;
-      this._tocService.startScrollSpy(docElement);
-    });
-  }
+  ngAfterViewInit(): void {}
 
   ngOnDestroy(): void {
     this._activeItemsSubscription.unsubscribe();

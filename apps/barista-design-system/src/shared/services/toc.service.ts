@@ -17,9 +17,10 @@
 import { Injectable, OnDestroy, NgZone } from '@angular/core';
 import { ReplaySubject, Subscription, Observable } from 'rxjs';
 
-import { BaScrollItem, BaScrollSpyService } from './scroll-spy.service';
+import { BaScrollSpyService2 } from './scroll-spy2.service';
 import { Platform } from '@angular/cdk/platform';
 import { TableOfContents } from '@dynatrace/shared/barista-definitions';
+import { BaScrollSpyElement } from '../scroll-spy/scroll-spy';
 
 /**
  * CODE COPIED FROM: 'https://github.com/angular/angular/blob/master/aio/src/app/shared/toc.service.ts' and modified
@@ -32,14 +33,14 @@ export class BaTocService implements OnDestroy {
   /** all toc items */
   tocItems: TableOfContents[];
 
-  private _scrollSpyInfo: Observable<BaScrollItem | null>;
+  private _scrollSpyInfo: Observable<BaScrollSpyElement[]>;
 
   /** Subscription on active items coming from scroll spy. */
   private _activeItemSubscription = Subscription.EMPTY;
 
   constructor(
     private _platform: Platform,
-    private _scrollSpyService: BaScrollSpyService,
+    private _scrollSpyService: BaScrollSpyService2,
     private _zone: NgZone,
   ) {}
 
@@ -57,30 +58,30 @@ export class BaTocService implements OnDestroy {
       return;
     }
 
-    const headlines = this._findTocHeadings(docElement);
     // during the angular router refactoring
     if (this._platform.isBrowser) {
       this._zone.runOutsideAngular(() => {
         // start the scroll spy
-        this._scrollSpyInfo = this._scrollSpyService.spyOn(headlines);
+        this._scrollSpyInfo = this._scrollSpyService.activeItems;
       });
       this._activeItemSubscription = this._scrollSpyInfo!.subscribe(
-        (scrollItem) => {
-          if (scrollItem) {
-            for (const tocItem of this.tocItems) {
-              const scrollItemId = scrollItem.element.getAttribute('id');
-              if (tocItem.id === scrollItemId) {
-                this.activeItems.next([tocItem]);
-              }
-              if (tocItem.children) {
-                for (const tocSubItem of tocItem.children) {
-                  if (tocSubItem.id === scrollItemId) {
-                    this.activeItems.next([tocItem, tocSubItem]);
+        (scrollItems) => {
+          scrollItems.forEach((scrollItem) => {
+            if (scrollItem) {
+              for (const tocItem of this.tocItems) {
+                if (tocItem.id === scrollItem.id) {
+                  this.activeItems.next([tocItem]);
+                }
+                if (tocItem.children) {
+                  for (const tocSubItem of tocItem.children) {
+                    if (tocSubItem.id === scrollItem.id) {
+                      this.activeItems.next([tocItem, tocSubItem]);
+                    }
                   }
                 }
               }
             }
-          }
+          });
         },
       );
     }
@@ -91,32 +92,28 @@ export class BaTocService implements OnDestroy {
     this._resetScrollSpyInfo();
   }
 
-  /** get all headlines used in the toc */
-  private _findTocHeadings(docElement: Element): HTMLHeadingElement[] {
-    // Only select direct children of the #all-content wrapper to not
-    // select headlines that are part of examples.
-    return querySelectorAll<HTMLHeadingElement>(
-      docElement,
-      '#all-content > h2[batableofcontentsection], #all-content > h3[batableofcontentsection]',
-    );
-  }
+  // /** get all headlines used in the toc */
+  // private _findTocHeadings(docElement: Element): HTMLHeadingElement[] {
+  //   // Only select direct children of the #all-content wrapper to not
+  //   // select headlines that are part of examples.
+  //   return querySelectorAll<HTMLHeadingElement>(
+  //     docElement,
+  //     '#all-content > h2[batableofcontentsection], #all-content > h3[batableofcontentsection]',
+  //   );
+  // }
 
   /** reset the scrollspyinfo if it exists */
   private _resetScrollSpyInfo(): void {
-    if (this._scrollSpyInfo) {
-      this._scrollSpyService.unspy();
-    }
-
     this.activeItems.next(undefined);
   }
 }
 
-// helper funtion returning an element array
-function querySelectorAll<E extends Element = Element>(
-  parent: Element,
-  selector: string,
-): E[];
-function querySelectorAll(parent: Element, selector: string): Element[] {
-  // Wrap the `NodeList` as a regular `Array` to have access to array methods.
-  return Array.from(parent.querySelectorAll(selector));
-}
+// // helper funtion returning an element array
+// function querySelectorAll<E extends Element = Element>(
+//   parent: Element,
+//   selector: string,
+// ): E[];
+// function querySelectorAll(parent: Element, selector: string): Element[] {
+//   // Wrap the `NodeList` as a regular `Array` to have access to array methods.
+//   return Array.from(parent.querySelectorAll(selector));
+// }

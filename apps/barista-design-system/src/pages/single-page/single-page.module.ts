@@ -34,10 +34,10 @@ import { BaToc } from './components/toc';
 import { BaPageContent } from './page-content';
 import { BaSinglePage } from './single-page';
 import { BaTocService } from '../../shared/services/toc.service';
-import { BaScrollSpyService } from '../../shared/services/scroll-spy.service';
+import { BaScrollSpyService2 } from '../../shared/services/scroll-spy2.service';
 import {
   BaTableOfContentsArea,
-  BaTableOfContentSection,
+  // BaTableOfContentSection,
 } from '../../shared/scroll-spy/scroll-spy';
 
 export const routes: Route[] = [
@@ -68,9 +68,8 @@ export const routes: Route[] = [
     BaLazyIcon,
     BaSidenav,
     BaTableOfContentsArea,
-    BaTableOfContentSection,
     BaToc,
   ],
-  providers: [BaRecentlyOrderedService, BaScrollSpyService, BaTocService],
+  providers: [BaRecentlyOrderedService, BaScrollSpyService2, BaTocService],
 })
 export class BaSinglePageModule {}

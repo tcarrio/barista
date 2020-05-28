@@ -16,31 +16,37 @@
 
 import {
   Component,
-  OnInit,
   ElementRef,
-  // ViewChildren,
-  QueryList,
   ComponentFactoryResolver,
   ViewContainerRef,
   ComponentRef,
   ComponentFactory,
   Injector,
   AfterViewInit,
-  ContentChildren,
+  ViewChildren,
+  QueryList,
+  OnInit,
+  AfterContentInit,
 } from '@angular/core';
 import { createComponent } from '../../utils/create-component';
+import { ReplaySubject } from 'rxjs';
+
+export interface BaScrollSpyElement {
+  id: string;
+  headlineElement: Element;
+}
 
 @Component({
   selector: 'h2[baTableOfContentSection], h3[baTableOfContentSection]',
   template: '<ng-content></ng-content>',
 })
 export class BaTableOfContentSection implements OnInit {
-  tableOfContentItem: HTMLAnchorElement;
+  sectionElement: Element;
 
   constructor(private _elementRef: ElementRef) {}
 
   ngOnInit(): void {
-    this.tableOfContentItem = this._elementRef.nativeElement;
+    this.sectionElement = this._elementRef.nativeElement;
   }
 }
 
@@ -48,9 +54,9 @@ export class BaTableOfContentSection implements OnInit {
   selector: '[baTableOfContentsArea]',
   template: '<ng-content></ng-content>',
 })
-export class BaTableOfContentsArea implements AfterViewInit {
-  // @ContentChildren('[baTableOfContentSection]')
-  // tableOfContentSections: QueryList<BaTableOfContentSection>;
+export class BaTableOfContentsArea implements AfterContentInit, AfterViewInit {
+  @ViewChildren('[baTableOfContentSection]')
+  sections: QueryList<HTMLElement>;
 
   tableOfContentSectionsCompRef: ComponentRef<BaTableOfContentSection>[] = [];
 
@@ -66,6 +72,9 @@ export class BaTableOfContentsArea implements AfterViewInit {
 
   observer = new IntersectionObserver(this.onChange, this.options);
 
+  spyItems: BaScrollSpyElement[] = [];
+  dominantItems = new ReplaySubject<BaScrollSpyElement[]>(1);
+
   constructor(
     private _elementRef: ElementRef<HTMLElement>,
     private _componentFactoryResolver: ComponentFactoryResolver,
@@ -73,21 +82,30 @@ export class BaTableOfContentsArea implements AfterViewInit {
     private _injector: Injector,
   ) {}
 
-  ngAfterViewInit(): void {
-    // tslint:disable-next-line: await-promise
+  ngAfterContentInit(): void {
     this.createComponents();
-    console.log(this.tableOfContentSectionsCompRef);
-    this.tableOfContentSectionsCompRef.forEach((tocItem) => {
-      console.log(tocItem);
-      this.observer.observe(tocItem.instance.tableOfContentItem);
+  }
+
+  ngAfterViewInit(): void {
+    this._componentRefs.forEach((componentRef) => {
+      this.observer.observe(componentRef.instance._elementRef.nativeElement);
+      this.spyItems.push({
+        id: (componentRef.instance._elementRef
+          .nativeElement as HTMLElement).getAttribute('id')!,
+        headlineElement: componentRef.instance._elementRef.nativeElement,
+      });
     });
+    // TODO: Create an object Subject(instead of only the element type) that contains the id.
+    // Send that over to the service and then to the toc
+    // and let the toc component compare the active item id with the toc item id to set the active style
+    // * ---------------
+    console.log(this._componentRefs[0]);
   }
 
   // TODO: Fetch all TOC sections and instantiate them dynamically for each headline.
   // TODO: Use Component Factory Resolver. UNDERSTAND IT THEN USE IT TO YOUR ADVANTAGE
 
   createComponents(): void {
-    console.log('created area');
     this._componentFactory = this._componentFactoryResolver.resolveComponentFactory(
       BaTableOfContentSection,
     );
@@ -98,25 +116,27 @@ export class BaTableOfContentsArea implements AfterViewInit {
     );
     placeholderElements.forEach((el) => {
       const children = [].slice.call(el.childNodes);
-      const component = createComponent<BaTableOfContentSection>(
-        this._componentFactory,
-        this._viewContainerRef,
-        this._injector,
-        el,
-        [...children],
+      this._componentRefs.push(
+        createComponent<BaTableOfContentSection>(
+          this._componentFactory,
+          this._viewContainerRef,
+          this._injector,
+          el,
+          [...children],
+        ),
       );
-      this._componentRefs.push(component);
-      this.tableOfContentSectionsCompRef.push(component);
-      debugger;
     });
   }
 
   // tslint:disable-next-line: typedef
-  onChange(changes, observer): void {
-    console.log(typeof changes, typeof observer);
+  onChange(changes: IntersectionObserverEntry[], _observer): void {
     changes.forEach((change) => {
       if (change.intersectionRatio > 0) {
-        console.log('intersected', change);
+        this.spyItems.forEach((spyItem) => {
+          if (spyItem.headlineElement === change.target) {
+            this.dominantItems.next([spyItem]);
+          }
+        });
       }
     });
   }
